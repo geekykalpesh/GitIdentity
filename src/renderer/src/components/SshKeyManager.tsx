@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Key, Copy, Plus, FileCode, Check, ShieldCheck, RefreshCw, Cpu, Trash2, Calendar, Clock } from 'lucide-react';
 import { api } from '../utils/api';
+import { copyToClipboard } from '../utils/clipboard';
 import { KeyPairInfo } from '../../types';
 
 export const SshKeyManager: React.FC = () => {
@@ -55,10 +56,12 @@ export const SshKeyManager: React.FC = () => {
     }
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(pubKeyText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    const success = await copyToClipboard(pubKeyText);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleAddToAgent = async (privPath: string) => {
@@ -190,21 +193,39 @@ export const SshKeyManager: React.FC = () => {
       {/* Public Key Display Modal/Box */}
       {selectedPubKey && (
         <div className="apple-glass-modal p-6 rounded-3xl space-y-3.5 border-teal-500/40 shadow-2xl animate-in fade-in">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <h4 className="text-xs font-bold text-teal-300 font-mono tracking-tight truncate max-w-md">Public Key: {selectedPubKey}</h4>
-            <button
-              onClick={handleCopy}
-              className="apple-button-primary px-4 py-1.5 rounded-xl text-xs font-extrabold flex items-center space-x-1 cursor-pointer"
-            >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied to Clipboard!' : 'Copy Key'}</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  const modal = e.currentTarget.closest('.apple-glass-modal');
+                  const textarea = modal?.querySelector('textarea');
+                  if (textarea) {
+                    textarea.focus();
+                    textarea.select();
+                  }
+                }}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 rounded-xl text-xs font-bold cursor-pointer transition shadow-sm"
+              >
+                <span>Select All</span>
+              </button>
+              <button
+                onClick={handleCopy}
+                className="apple-button-primary px-4 py-1.5 rounded-xl text-xs font-extrabold flex items-center space-x-1 cursor-pointer"
+              >
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied to Clipboard!' : 'Copy Key'}</span>
+              </button>
+            </div>
           </div>
           <textarea
             readOnly
             value={pubKeyText}
-            rows={3}
-            className="w-full p-4 bg-slate-950/90 border border-white/10 rounded-2xl text-xs font-mono text-teal-200 focus:outline-none resize-none select-all shadow-inner"
+            rows={4}
+            onClick={(e) => e.currentTarget.select()}
+            onFocus={(e) => e.currentTarget.select()}
+            className="w-full p-4 bg-slate-950/90 border border-white/10 rounded-2xl text-xs font-mono text-teal-200 focus:outline-none resize-y select-all shadow-inner leading-relaxed"
           />
         </div>
       )}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Account } from '../../types';
 import { api } from '../utils/api';
+import { copyToClipboard } from '../utils/clipboard';
 import { Users, Plus, CheckCircle2, AlertCircle, Trash2, Key, RefreshCw, Github, ShieldAlert, X, Copy, Check, Terminal, Clock, Sparkles, HelpCircle, ExternalLink } from 'lucide-react';
 
 interface AccountManagerProps {
@@ -19,9 +20,36 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ accounts, onAcco
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [copiedCmd, setCopiedCmd] = useState<Record<string, boolean>>({});
+  const [publicKeys, setPublicKeys] = useState<Record<string, string>>({});
 
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadPublicKeys = async () => {
+      const keysMap: Record<string, string> = {};
+      for (const acc of accounts) {
+        if (acc.publicKeyPath) {
+          try {
+            const keyText = await api.readPublicKey(acc.publicKeyPath);
+            if (keyText) {
+              keysMap[acc.id] = keyText.trim();
+            }
+          } catch (err) {
+            console.warn(`Could not load public key for account ${acc.id}`, err);
+          }
+        }
+      }
+      if (isMounted) {
+        setPublicKeys(keysMap);
+      }
+    };
+    loadPublicKeys();
+    return () => {
+      isMounted = false;
+    };
+  }, [accounts]);
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return null;
@@ -67,12 +95,14 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ accounts, onAcco
   const cleanRepo = (repoName.trim() || 'repository').replace(/\.git$/, '');
   const previewCommand = `git remote add origin git@${formattedAlias}:${previewUser}/${cleanRepo}.git`;
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCmd((prev) => ({ ...prev, [id]: true }));
-    setTimeout(() => {
-      setCopiedCmd((prev) => ({ ...prev, [id]: false }));
-    }, 2000);
+  const handleCopy = async (text: string, id: string) => {
+    const success = await copyToClipboard(text);
+    if (success) {
+      setCopiedCmd((prev) => ({ ...prev, [id]: true }));
+      setTimeout(() => {
+        setCopiedCmd((prev) => ({ ...prev, [id]: false }));
+      }, 2000);
+    }
   };
 
   const handleCreateAccount = async (e: React.FormEvent) => {
@@ -359,13 +389,29 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ accounts, onAcco
                         <span className="text-xs font-extrabold text-slate-100 tracking-tight">Public SSH Key (Paste to GitHub)</span>
                       </div>
 
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 flex-wrap gap-1.5">
                         <button
-                          onClick={() => handleCopy(acc.publicKey || '', `${acc.id}_pubkey`)}
+                          onClick={() => handleCopy(publicKeys[acc.id] || '', `${acc.id}_pubkey`)}
                           className="px-3.5 py-1.5 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 text-slate-950 rounded-xl text-xs font-black flex items-center space-x-1.5 cursor-pointer shadow-lg shadow-teal-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
                         >
                           {copiedCmd[`${acc.id}_pubkey`] ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Copy className="w-3.5 h-3.5 stroke-[3]" />}
                           <span>{copiedCmd[`${acc.id}_pubkey`] ? 'Key Copied!' : 'Copy Public Key'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            const parentBox = e.currentTarget.closest('.space-y-2\\.5, .mt-4');
+                            const textarea = parentBox?.querySelector('textarea');
+                            if (textarea) {
+                              textarea.focus();
+                              textarea.select();
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer transition shadow-sm"
+                          title="Select all text in SSH key box"
+                        >
+                          <span>Select All</span>
                         </button>
 
                         <button
@@ -379,14 +425,19 @@ export const AccountManager: React.FC<AccountManagerProps> = ({ accounts, onAcco
                       </div>
                     </div>
 
-                    {/* Display Key Preview Box */}
-                    <div className="font-mono text-[11px] text-teal-300/90 bg-slate-900/95 p-2.5 rounded-xl border border-white/10 break-all select-all max-h-16 overflow-y-auto leading-relaxed shadow-inner">
-                      {acc.publicKey || 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...'}
-                    </div>
+                    {/* Display Key Preview Box - Whole key completely visible */}
+                    <textarea
+                      readOnly
+                      value={publicKeys[acc.id] || 'Loading public SSH key...'}
+                      rows={3}
+                      onClick={(e) => e.currentTarget.select()}
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="w-full font-mono text-[11px] text-teal-300 bg-slate-900/95 p-3 rounded-xl border border-white/10 break-all select-all leading-relaxed shadow-inner resize-y focus:outline-none focus:border-teal-400/60 cursor-text"
+                    />
 
                     <div className="flex items-center space-x-1.5 text-[10px] text-slate-400 font-medium pt-0.5">
                       <AlertCircle className="w-3 h-3 text-teal-400 shrink-0" />
-                      <span>Copy this key and paste it at <strong>GitHub ➔ Settings ➔ SSH and GPG keys ➔ New SSH Key</strong></span>
+                      <span>Click inside box or click <strong>Select All</strong> to copy manually (Ctrl+C). Paste at <strong>GitHub ➔ Settings ➔ SSH keys</strong></span>
                     </div>
                   </div>
 

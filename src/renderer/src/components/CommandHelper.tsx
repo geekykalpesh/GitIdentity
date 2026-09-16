@@ -1,6 +1,7 @@
 import { Account } from '../../types';
 import { Terminal, Copy, Check, Sparkles, Code, ShieldCheck } from 'lucide-react';
 import React, { useState } from 'react';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface CommandHelperProps {
   accounts: Account[];
@@ -25,10 +26,12 @@ export const CommandHelper: React.FC<CommandHelperProps> = ({ accounts }) => {
   const checkIdentityCmd = `git config user.name && git config user.email`;
   const fullSetupCmd = `git remote set-url origin ${remoteUrl} && git config user.name "${username}" && git config user.email "${email}"`;
 
-  const handleCopy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCmd(label);
-    setTimeout(() => setCopiedCmd(null), 2000);
+  const handleCopy = async (text: string, label: string) => {
+    const success = await copyToClipboard(text);
+    if (success) {
+      setCopiedCmd(label);
+      setTimeout(() => setCopiedCmd(null), 2000);
+    }
   };
 
   return (

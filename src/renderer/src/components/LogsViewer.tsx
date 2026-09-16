@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogEntry } from '../../types';
 import { api } from '../utils/api';
+import { copyToClipboard } from '../utils/clipboard';
 import { FileText, Search, RefreshCw, ShieldCheck, Copy, Check } from 'lucide-react';
 
 export const LogsViewer: React.FC = () => {
@@ -29,11 +30,13 @@ export const LogsViewer: React.FC = () => {
     return matchesSearch && matchesLevel;
   });
 
-  const handleCopyLogs = () => {
+  const handleCopyLogs = async () => {
     const text = filteredLogs.map((l) => `[${l.timestamp}] [${l.level.toUpperCase()}] [${l.category || 'App'}]: ${l.message}`).join('\n');
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const success = await copyToClipboard(text);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (

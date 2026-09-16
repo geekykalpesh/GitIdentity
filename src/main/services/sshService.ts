@@ -123,19 +123,31 @@ export class SSHService {
   }
 
   /**
+   * Helper to resolve paths starting with '~' to absolute OS user homedir paths
+   */
+  private resolvePath(targetPath: string): string {
+    if (!targetPath) return '';
+    if (targetPath.startsWith('~')) {
+      return path.join(os.homedir(), targetPath.slice(1).replace(/^[/\\]/, ''));
+    }
+    return path.normalize(targetPath);
+  }
+
+  /**
    * Delete an SSH keypair (both private key and public key) safely
    */
   public async deleteSshKey(privateKeyPath: string): Promise<boolean> {
-    const pubPath = `${privateKeyPath}.pub`;
-    logger.info(`Deleting SSH Keypair: ${privateKeyPath}`, 'SSHService');
+    const resolvedPriv = this.resolvePath(privateKeyPath);
+    const pubPath = `${resolvedPriv}.pub`;
+    logger.info(`Deleting SSH Keypair: ${resolvedPriv}`, 'SSHService');
 
     try {
-      await execFileAsync('ssh-add', ['-d', privateKeyPath]).catch(() => {});
+      await execFileAsync('ssh-add', ['-d', resolvedPriv]).catch(() => {});
     } catch (e) {}
 
     let deleted = false;
-    if (fs.existsSync(privateKeyPath)) {
-      fs.unlinkSync(privateKeyPath);
+    if (fs.existsSync(resolvedPriv)) {
+      fs.unlinkSync(resolvedPriv);
       deleted = true;
     }
     if (fs.existsSync(pubPath)) {
@@ -143,7 +155,7 @@ export class SSHService {
       deleted = true;
     }
 
-    logger.info(`SSH Keypair deleted: ${privateKeyPath}`, 'SSHService');
+    logger.info(`SSH Keypair deleted: ${resolvedPriv}`, 'SSHService');
     return deleted;
   }
 
@@ -151,10 +163,11 @@ export class SSHService {
    * Reads public key safely
    */
   public readPublicKey(pubPath: string): string {
-    if (!fs.existsSync(pubPath)) {
-      throw new Error(`Public key file not found: ${pubPath}`);
+    const resolvedPub = this.resolvePath(pubPath);
+    if (!fs.existsSync(resolvedPub)) {
+      throw new Error(`Public key file not found: ${resolvedPub}`);
     }
-    return fs.readFileSync(pubPath, 'utf-8').trim();
+    return fs.readFileSync(resolvedPub, 'utf-8').trim();
   }
 
   /**
@@ -195,14 +208,15 @@ export class SSHService {
    * Add key to SSH agent safely (auto-starts agent if stopped)
    */
   public async addKeyToAgent(privateKeyPath: string): Promise<boolean> {
-    if (!fs.existsSync(privateKeyPath)) {
-      throw new Error(`Private key file not found at ${privateKeyPath}`);
+    const resolvedPriv = this.resolvePath(privateKeyPath);
+    if (!fs.existsSync(resolvedPriv)) {
+      throw new Error(`Private key file not found at ${resolvedPriv}`);
     }
 
     try {
       await this.ensureSshAgentRunning().catch(() => {});
-      logger.info(`Adding key ${path.basename(privateKeyPath)} to SSH agent...`, 'SSHService');
-      await execFileAsync('ssh-add', [privateKeyPath]);
+      logger.info(`Adding key ${path.basename(resolvedPriv)} to SSH agent...`, 'SSHService');
+      await execFileAsync('ssh-add', [resolvedPriv]);
       return true;
     } catch (err: any) {
       logger.warn(`ssh-add failed or ssh-agent not active: ${err.message}`, 'SSHService');

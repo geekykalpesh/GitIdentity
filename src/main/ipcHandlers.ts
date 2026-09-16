@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell } from 'electron';
+import { ipcMain, dialog, shell, clipboard } from 'electron';
 import { systemService } from './services/systemService';
 import { sshService } from './services/sshService';
 import { sshConfigManager } from './services/sshConfigManager';
@@ -19,6 +19,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('system:unset-global-identity', async () => {
     return await systemService.unsetGlobalGitIdentity();
+  });
+
+  ipcMain.handle('system:copy-to-clipboard', async (_, text: string) => {
+    clipboard.writeText(text || '');
+    return true;
   });
 
   // Accounts

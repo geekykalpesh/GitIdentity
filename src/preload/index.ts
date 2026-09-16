@@ -4,6 +4,7 @@ const api = {
   // System
   getSystemStatus: () => ipcRenderer.invoke('system:get-status'),
   unsetGlobalGitIdentity: () => ipcRenderer.invoke('system:unset-global-identity'),
+  copyToClipboard: (text: string) => ipcRenderer.invoke('system:copy-to-clipboard', text),
 
   // Accounts
   getAccounts: () => ipcRenderer.invoke('accounts:get-all'),

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SystemStatus, Account } from '../../types';
 import { api } from '../utils/api';
+import { copyToClipboard } from '../utils/clipboard';
 import { 
   ShieldCheck, 
   CheckCircle2, 
@@ -88,11 +89,13 @@ export const FirstRunWizard: React.FC<FirstRunWizardProps> = ({ onFinish, system
     }
   };
 
-  const handleCopyKey = () => {
+  const handleCopyKey = async () => {
     if (!publicKeyText) return;
-    navigator.clipboard.writeText(publicKeyText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const success = await copyToClipboard(publicKeyText);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleOpenGitHubKeys = () => {
@@ -400,12 +403,30 @@ export const FirstRunWizard: React.FC<FirstRunWizardProps> = ({ onFinish, system
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-400">Public Key Content</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-slate-400">Public Key Content</label>
+              <button
+                type="button"
+                onClick={(e) => {
+                  const parent = e.currentTarget.closest('.space-y-2');
+                  const textarea = parent?.querySelector('textarea');
+                  if (textarea) {
+                    textarea.focus();
+                    textarea.select();
+                  }
+                }}
+                className="text-[11px] font-bold text-teal-300 hover:text-teal-200 underline cursor-pointer"
+              >
+                Select All Text
+              </button>
+            </div>
             <textarea
               readOnly
               value={publicKeyText}
-              rows={3}
-              className="w-full p-3 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-teal-300 focus:outline-none select-all resize-none"
+              rows={4}
+              onClick={(e) => e.currentTarget.select()}
+              onFocus={(e) => e.currentTarget.select()}
+              className="w-full p-3 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-teal-300 focus:outline-none select-all resize-y leading-relaxed"
             />
           </div>
 
