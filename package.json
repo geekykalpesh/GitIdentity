@@ -52,6 +52,7 @@
       "publisher": "CN=GeekyKalpesh",
       "publisherDisplayName": "GeekyKalpesh",
       "displayName": "GitIdentity",
+      "minVersion": "10.0.17763.0",
       "showNameOnTiles": true,
       "artifactName": "${productName}-Windows-Store-${version}.msix"
     },
