@@ -12,7 +12,8 @@
     "test": "vitest run",
     "cert:generate": "powershell -ExecutionPolicy Bypass -File ./scripts/generate-cert.ps1",
     "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win --config.win.signAndEditExecutable=false",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:msix": "npm run build && electron-builder --win appx",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:linux": "npm run build && electron-builder --linux",
     "dist:all": "npm run build && electron-builder -wml",
@@ -44,6 +45,15 @@
           ]
         }
       ]
+    },
+    "appx": {
+      "applicationId": "GitIdentity",
+      "identityName": "GeekyKalpesh.GitIdentity",
+      "publisher": "CN=GeekyKalpesh",
+      "publisherDisplayName": "GeekyKalpesh",
+      "displayName": "GitIdentity",
+      "showNameOnTiles": true,
+      "artifactName": "${productName}-Windows-Store-${version}.msix"
     },
     "mac": {
       "icon": "resources/icon.png",
